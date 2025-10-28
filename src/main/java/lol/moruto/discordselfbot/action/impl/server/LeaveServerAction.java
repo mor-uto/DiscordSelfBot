@@ -1,4 +1,4 @@
-package lol.moruto.discordselfbot.action.impl;
+package lol.moruto.discordselfbot.action.impl.server;
 
 import lol.moruto.discordselfbot.GlobalConstants;
 import lol.moruto.discordselfbot.action.AbstractRestAction;

@@ -63,12 +63,45 @@ public class HttpClient {
         return handleResponse(connection);
     }
 
+    public static RestResponse patch(String url, String jsonPayload, String authToken) throws Exception {
+        URL requestUrl = new URL(url);
+        HttpURLConnection connection = (HttpURLConnection) requestUrl.openConnection();
+
+        connection.setRequestMethod("PATCH");
+        applyCommonHeaders(connection, authToken);
+        connection.setDoOutput(true);
+
+        try (OutputStream os = connection.getOutputStream()) {
+            byte[] input = jsonPayload.getBytes(StandardCharsets.UTF_8);
+            os.write(input);
+        }
+
+        return handleResponse(connection);
+    }
+
     public static RestResponse get(String url, String authToken) throws Exception {
         URL requestUrl = new URL(url);
         HttpURLConnection connection = (HttpURLConnection) requestUrl.openConnection();
 
         connection.setRequestMethod("GET");
         applyCommonHeaders(connection, authToken);
+
+        return handleResponse(connection);
+    }
+
+    public static RestResponse put(String url, String jsonPayload, String authToken) throws Exception {
+        URL requestUrl = new URL(url);
+        HttpURLConnection connection = (HttpURLConnection) requestUrl.openConnection();
+
+        connection.setRequestMethod("PUT");
+        applyCommonHeaders(connection, authToken);
+        if (jsonPayload != null && !jsonPayload.isEmpty()) {
+            connection.setDoOutput(true);
+            try (OutputStream os = connection.getOutputStream()) {
+                byte[] input = jsonPayload.getBytes(StandardCharsets.UTF_8);
+                os.write(input);
+            }
+        }
 
         return handleResponse(connection);
     }
