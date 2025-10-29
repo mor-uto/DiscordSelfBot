@@ -14,19 +14,19 @@ public final class Message {
     private final String id;
     private final String channelId;
     private String content;
-    private final String authorId;
+    private final Member author;
     private final List<String> reactions;
 
-    Message(String id, String channelId, String content, String authorId, List<String> reactions) {
+    Message(String id, String channelId, String content, Member author, List<String> reactions) {
         this.id = id;
         this.channelId = channelId;
         this.content = content;
-        this.authorId = authorId;
+        this.author = author;
         this.reactions = new ArrayList<>(reactions != null ? reactions : Collections.emptyList());
     }
 
-    public static Message create(String id, String channelId, String content, String authorId, List<String> reactions) {
-        return new Message(id, channelId, content, authorId, reactions);
+    public static Message create(String id, String channelId, String content, Member author, List<String> reactions) {
+        return new Message(id, channelId, content, author, reactions);
     }
 
     public String getId() {
@@ -41,8 +41,8 @@ public final class Message {
         return content;
     }
 
-    public String getAuthorId() {
-        return authorId;
+    public Member getAuthor() {
+        return author;
     }
 
     public List<String> getReactions() {

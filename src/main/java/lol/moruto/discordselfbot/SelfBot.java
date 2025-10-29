@@ -4,6 +4,8 @@ import lol.moruto.discordselfbot.event.EventDispatcher;
 import lol.moruto.discordselfbot.object.Message;
 import lol.moruto.discordselfbot.object.Reaction;
 import lol.moruto.discordselfbot.object.Member;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -12,14 +14,13 @@ import java.util.ArrayList;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 
-import org.json.JSONObject;
-
 public class SelfBot {
     private final String token;
     private static SelfBot instance;
     private WebSocket ws;
     private final EventDispatcher dispatcher = new EventDispatcher();
     private final CountDownLatch latch = new CountDownLatch(1);
+    private volatile Member selfMember;
 
     public SelfBot(String token) {
         instance = this;
@@ -35,7 +36,6 @@ public class SelfBot {
 
         ws = client.newWebSocketBuilder()
                 .buildAsync(uri, new WebSocket.Listener() {
-
                     private final StringBuilder buffer = new StringBuilder();
 
                     @Override
@@ -78,18 +78,17 @@ public class SelfBot {
     }
 
     private void sendIdentify(WebSocket webSocket) {
-        String identify = new JSONObject()
+        JSONObject identify = new JSONObject()
                 .put("op", 2)
                 .put("d", new JSONObject()
                         .put("token", token)
-                        .put("intents", 513)
+                        .put("intents", 262143)
                         .put("properties", new JSONObject()
                                 .put("$os", "windows")
                                 .put("$browser", "myself")
-                                .put("$device", "myself")))
-                .toString();
+                                .put("$device", "myself")));
 
-        webSocket.sendText(identify, true);
+        webSocket.sendText(identify.toString(), true);
     }
 
     private void handleMessage(String json) {
@@ -98,64 +97,90 @@ public class SelfBot {
             String type = obj.optString("t");
             JSONObject data = obj.optJSONObject("d");
 
+            if ("READY".equals(type) && data != null) {
+                JSONObject userObj = data.optJSONObject("user");
+                if (userObj != null) {
+                    selfMember = new Member(
+                            userObj.optString("id", "0"),
+                            userObj.optString("username", "unknown"),
+                            userObj.optString("discriminator", "0000"),
+                            userObj.optString("avatar", null)
+                    );
+                }
+            }
+
+
             if (type == null || data == null) return;
 
             switch (type) {
                 case "MESSAGE_CREATE" -> {
                     String id = data.getString("id");
                     String channelId = data.getString("channel_id");
-                    String content = data.optString("content", "");
-                    JSONObject authorObj = data.getJSONObject("author");
-                    String authorId = authorObj.getString("id");
+                    String content = data.optString("content", null);
 
-                    Message msg = Message.create(id, channelId, content, authorId, new ArrayList<>());
+                    if (content == null || content.isEmpty()) {
+                        JSONArray embeds = data.optJSONArray("embeds");
+                        JSONArray attachments = data.optJSONArray("attachments");
+                        if (embeds != null && !embeds.isEmpty()) {
+                            content = "[embed]";
+                        } else if (attachments != null && !attachments.isEmpty()) {
+                            content = "[attachment]";
+                        } else {
+                            content = "[unknown or empty message]";
+                        }
+                    }
+
+                    JSONObject authorObj = data.getJSONObject("author");
+                    Member author = new Member(
+                            authorObj.optString("id", "0"),
+                            authorObj.optString("username", "unknown"),
+                            authorObj.optString("discriminator", "0000"),
+                            authorObj.optString("avatar", null)
+                    );
+
+                    Message msg = Message.create(id, channelId, content, author, new ArrayList<>());
                     dispatcher.dispatchMessage(msg);
                 }
                 case "MESSAGE_REACTION_ADD" -> {
                     JSONObject emojiObj = data.getJSONObject("emoji");
-                    String emojiName = emojiObj.getString("name");
-                    String emojiId = emojiObj.optString("id", null);
-                    boolean animated = emojiObj.optBoolean("animated", false);
-
-                    Reaction reaction = new Reaction(emojiName, emojiId, animated);
-                    String channelId = data.getString("channel_id");
-                    String messageId = data.getString("message_id");
-                    String userId = data.getString("user_id");
-
-                    dispatcher.dispatchReactionAdd(channelId, messageId, reaction, userId);
+                    Reaction reaction = new Reaction(
+                            data.getString("message_id"),
+                            data.getString("channel_id"),
+                            emojiObj.getString("name"),
+                            emojiObj.optString("id", null),
+                            emojiObj.optBoolean("animated", false)
+                    );
+                    dispatcher.dispatchReactionAdd(reaction, data.getString("user_id"));
                 }
-
                 case "MESSAGE_REACTION_REMOVE" -> {
                     JSONObject emojiObj = data.getJSONObject("emoji");
-                    String emojiName = emojiObj.getString("name");
-                    String emojiId = emojiObj.optString("id", null);
-                    boolean animated = emojiObj.optBoolean("animated", false);
-
-                    Reaction reaction = new Reaction(emojiName, emojiId, animated);
-                    String channelId = data.getString("channel_id");
-                    String messageId = data.getString("message_id");
-                    String userId = data.getString("user_id");
-
-                    dispatcher.dispatchReactionRemove(channelId, messageId, reaction, userId);
+                    Reaction reaction = new Reaction(
+                            data.getString("message_id"),
+                            data.getString("channel_id"),
+                            emojiObj.getString("name"),
+                            emojiObj.optString("id", null),
+                            emojiObj.optBoolean("animated", false)
+                    );
+                    dispatcher.dispatchReactionRemove(reaction, data.getString("user_id"));
                 }
                 case "GUILD_MEMBER_ADD" -> {
                     JSONObject userObj = data.getJSONObject("user");
-                    String userId = userObj.getString("id");
-                    String username = userObj.optString("username", "unknown");
-                    String discriminator = userObj.optString("discriminator", "0000");
-                    String avatarUrl = userObj.optString("avatar", null);
-
-                    Member member = new Member(userId, username, discriminator, avatarUrl);
+                    Member member = new Member(
+                            userObj.getString("id"),
+                            userObj.optString("username", "unknown"),
+                            userObj.optString("discriminator", "0000"),
+                            userObj.optString("avatar", null)
+                    );
                     dispatcher.dispatchMemberJoin(member);
                 }
                 case "GUILD_MEMBER_REMOVE" -> {
                     JSONObject userObj = data.getJSONObject("user");
-                    String userId = userObj.getString("id");
-                    String username = userObj.optString("username", "unknown");
-                    String discriminator = userObj.optString("discriminator", "0000");
-                    String avatarUrl = userObj.optString("avatar", null);
-
-                    Member member = new Member(userId, username, discriminator, avatarUrl);
+                    Member member = new Member(
+                            userObj.getString("id"),
+                            userObj.optString("username", "unknown"),
+                            userObj.optString("discriminator", "0000"),
+                            userObj.optString("avatar", null)
+                    );
                     dispatcher.dispatchMemberLeave(member);
                 }
             }
@@ -165,12 +190,13 @@ public class SelfBot {
     }
 
     public void shutdown() {
-        if (ws != null) {
-            ws.sendClose(WebSocket.NORMAL_CLOSURE, "Shutdown").thenRun(latch::countDown);
-        } else {
-            latch.countDown();
-        }
+        if (ws != null) ws.sendClose(WebSocket.NORMAL_CLOSURE, "Shutdown").thenRun(latch::countDown);
+        else latch.countDown();
     }
 
     public String getToken() { return token; }
+
+    public Member getSelfMember() {
+        return selfMember;
+    }
 }

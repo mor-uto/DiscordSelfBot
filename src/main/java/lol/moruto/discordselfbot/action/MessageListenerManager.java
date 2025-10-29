@@ -1,6 +1,6 @@
 package lol.moruto.discordselfbot.action;
 
-import lol.moruto.discordselfbot.action.impl.MessageListener;
+import lol.moruto.discordselfbot.event.impl.MessageListener;
 import lol.moruto.discordselfbot.object.Message;
 
 import java.util.ArrayList;
