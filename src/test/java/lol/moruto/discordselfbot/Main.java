@@ -1,11 +1,13 @@
 package lol.moruto.discordselfbot;
 
-import lol.moruto.discordselfbot.action.impl.message.SendMessageAction;
+import java.io.IOException;
 
 public class Main {
-    public static final SelfBot selfBot = new SelfBot("MTI3NjYwNTYzMzU2MjY3NzM0MQ.GFQ-mQ.vVDPMRkFkLvHaZKktfp7UH_7Oe-Xmrf72CZLYw");
+    public static SelfBot selfBot;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
+        selfBot = new SelfBot((String) JSONLoader.loadObject("data.json").get("token"));
+
         selfBot.getEventDispatcher().addMessageListener(msg -> {
             System.out.println("New message received in channel: " + msg.getChannelId());
             System.out.println("Author ID: " + msg.getAuthor().getId());

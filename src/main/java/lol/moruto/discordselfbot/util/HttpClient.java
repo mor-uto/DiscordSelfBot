@@ -10,16 +10,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
 public class HttpClient {
-
     private static String readResponse(HttpURLConnection connection) throws Exception {
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(
-                        connection.getResponseCode() < 400
-                                ? connection.getInputStream()
-                                : connection.getErrorStream(),
-                        StandardCharsets.UTF_8
-                )
-        )) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getResponseCode() < 400 ? connection.getInputStream() : connection.getErrorStream(), StandardCharsets.UTF_8))) {
             StringBuilder response = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
@@ -37,10 +29,7 @@ public class HttpClient {
 
     private static void applyCommonHeaders(HttpURLConnection connection, String authToken) {
         connection.setRequestProperty("Content-Type", "application/json");
-        connection.setRequestProperty("User-Agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        + "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        + "Chrome/120.0.0.0 Safari/537.36");
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
         if (authToken != null && !authToken.isEmpty()) {
             connection.setRequestProperty("Authorization", authToken);

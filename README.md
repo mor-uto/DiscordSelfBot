@@ -1,6 +1,6 @@
 
 # DiscordSelfBot
-- THIS IS BS I DON'T RECOMMEND USING ⚠️
+- I dont recommend using this as its WIP ⚠️
 
 ### Installation
 - download it in ur project folder ig or smth
